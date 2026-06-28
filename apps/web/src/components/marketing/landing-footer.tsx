@@ -140,7 +140,6 @@ export function LandingFooter() {
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-sm sm:flex-row">
           <p>© {new Date().getFullYear()} AgentFlow CRM. All rights reserved.</p>
-          <p className="text-xs text-zinc-600">Built with Next.js · FastAPI · PostgreSQL</p>
         </div>
       </div>
     </footer>
