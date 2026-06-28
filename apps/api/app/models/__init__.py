@@ -29,6 +29,7 @@ from app.models.crm import (
 from app.models.security import ContactSubmission, PublicWebhookRequest
 from app.models.user import User
 from app.models.workflow import Workflow, WorkflowStatus
+from app.models.ai_request_log import AiRequestLog, AiRequestStatus
 
 __all__ = [
     "AccountStatus",
@@ -60,4 +61,6 @@ __all__ = [
     "WorkflowStatus",
     "WebhookEndpoint",
     "WebhookLog",
+    "AiRequestLog",
+    "AiRequestStatus",
 ]

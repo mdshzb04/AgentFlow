@@ -6,15 +6,21 @@ import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  useCrmRecordLabelsQuery,
-} from "@/graphql/generated/graphql";
+import { useCrmRecordLabelsQuery } from "@/graphql/generated/graphql";
+import { useAuth } from "@/components/providers/auth-provider";
 import {
   type CrmRecordOption,
   type CrmRelatedType,
-  listRelatedRecordOptions,
 } from "@/lib/crm-records";
 import { cn } from "@/lib/utils";
+
+const TYPE_KEY: Record<CrmRelatedType, keyof NonNullable<ReturnType<typeof useCrmRecordLabelsQuery>["data"]>["crmRecordLabels"]> = {
+  company: "companies",
+  contact: "contacts",
+  lead: "leads",
+  deal: "deals",
+  task: "tasks",
+};
 
 export function RelatedRecordPicker({
   relatedType,
@@ -27,40 +33,34 @@ export function RelatedRecordPicker({
   onChange: (id: string | null) => void;
   disabled?: boolean;
 }) {
+  const { isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [options, setOptions] = useState<CrmRecordOption[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Prefetch all labels in one GraphQL query; picker reads from Apollo cache.
-  useCrmRecordLabelsQuery({ fetchPolicy: "cache-first" });
+  const { data, loading, error } = useCrmRecordLabelsQuery({
+    skip: !isAuthenticated,
+    fetchPolicy: "cache-and-network",
+    notifyOnNetworkStatusChange: true,
+  });
 
+  const options: CrmRecordOption[] = useMemo(() => {
+    const labels = data?.crmRecordLabels;
+    if (!labels) return [];
+    const rows = labels[TYPE_KEY[relatedType]] ?? [];
+    return rows.map((row) => ({
+      id: row.id,
+      label: row.label,
+      subtitle: row.subtitle ?? undefined,
+    }));
+  }, [data, relatedType]);
+
+  // Reset search when type changes.
   useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    setLoadError(null);
-    setOptions([]);
     setSearch("");
-    setOpen(false);
-
-    void listRelatedRecordOptions(relatedType)
-      .then((rows) => {
-        if (!cancelled) setOptions(rows);
-      })
-      .catch(() => {
-        if (!cancelled) setLoadError("Failed to load records");
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
   }, [relatedType]);
 
   const selected = options.find((opt) => opt.id === value) ?? null;
+  const loadError = error ? "Failed to load records" : null;
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -81,11 +81,11 @@ export function RelatedRecordPicker({
           type="button"
           variant="outline"
           className="w-full justify-between font-normal"
-          disabled={disabled || isLoading}
+          disabled={disabled || loading}
           onClick={() => setOpen((v) => !v)}
         >
           <span className="truncate text-left">
-            {isLoading ? (
+            {loading ? (
               <span className="inline-flex items-center gap-2 text-muted-foreground">
                 <Loader2 className="size-3.5 animate-spin" />
                 Loading {relatedType}s…
@@ -99,7 +99,7 @@ export function RelatedRecordPicker({
           <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
         </Button>
 
-        {open && !isLoading && (
+        {open && !loading && (
           <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-popover p-2 shadow-md">
             <Input
               autoFocus

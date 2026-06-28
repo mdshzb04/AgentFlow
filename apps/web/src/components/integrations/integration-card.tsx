@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Loader2,
   RefreshCw,
   Settings,
@@ -25,9 +28,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { IntegrationMetricsPanel } from "@/components/integrations/integration-metrics";
 import type { IntegrationCard } from "@/lib/integrations-platform";
 import { getConnectUrl } from "@/lib/integrations-platform";
 import { cn } from "@/lib/utils";
+
 const SLUG_TO_BRAND: Record<string, IntegrationBrandId> = {
   openai: "openai",
   notion: "notion",
@@ -44,6 +49,10 @@ function formatLastSync(iso: string | null) {
   } catch {
     return "—";
   }
+}
+
+function isOpenAIConfigured() {
+  return true; // platform card is always "connected" in this UI
 }
 
 export function IntegrationProviderCard({
@@ -68,19 +77,18 @@ export function IntegrationProviderCard({
   token?: string;
 }) {
   const brand = SLUG_TO_BRAND[card.slug] ?? "webhooks";
-  const connected = card.status === "connected";
-  const unhealthy = connected && card.health_status === "error";
+  const normalizedStatus = String(card.status || "").toUpperCase();
+  const connected = normalizedStatus === "CONNECTED";
+  const unhealthy = connected && String(card.health_status || "").toUpperCase() === "ERROR";
   const isOAuth = card.auth_type === "oauth";
   const isPlatform = card.auth_type === "platform";
   const isWebhooks = card.slug === "webhooks";
   const isN8n = card.slug === "n8n";
   const isNotion = card.slug === "notion";
+  const isOpenAI = card.slug === "openai";
 
-  const instanceUrl = card.settings.instance_url as string | undefined;
-  const version = card.settings.version as string | undefined;
-  const workflowsImported = card.settings.workflows_imported as number | undefined;
-  const workspaceName = card.settings.workspace_name as string | undefined;
-  const openaiModel = card.settings.model as string | undefined;
+  const [expanded, setExpanded] = useState(true);
+  const showMetrics = connected || isOpenAI;
 
   return (
     <Card
@@ -97,14 +105,11 @@ export function IntegrationProviderCard({
             </div>
             <div>
               <CardTitle className="text-base font-semibold">{card.name}</CardTitle>
-              <CardDescription className="text-xs">{card.description}</CardDescription>
+              <CardDescription className="line-clamp-2 text-xs">{card.description}</CardDescription>
             </div>
           </div>
           {connected ? (
-            <Badge
-              variant={unhealthy ? "destructive" : "default"}
-              className="shrink-0 gap-1"
-            >
+            <Badge variant={unhealthy ? "destructive" : "default"} className="shrink-0 gap-1">
               {unhealthy ? (
                 <AlertCircle className="size-3" />
               ) : (
@@ -112,6 +117,13 @@ export function IntegrationProviderCard({
               )}
               {unhealthy ? "Error" : "Connected"}
             </Badge>
+          ) : normalizedStatus === "ERROR" ? (
+            <Badge variant="destructive" className="gap-1">
+              <AlertCircle className="size-3" />
+              Error
+            </Badge>
+          ) : normalizedStatus === "EXPIRED" ? (
+            <Badge variant="secondary">Expired</Badge>
           ) : (
             <Badge variant="secondary">Disconnected</Badge>
           )}
@@ -126,52 +138,65 @@ export function IntegrationProviderCard({
         )}
 
         {connected && (
-          <dl className="grid gap-1.5 text-xs text-muted-foreground">
-            <div className="flex justify-between gap-2">
+          <dl className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+            <div>
               <dt>Last sync</dt>
               <dd className="text-foreground">{formatLastSync(card.last_sync_at)}</dd>
             </div>
             {(card.account_email || card.display_name) && !isN8n && !isPlatform && (
-              <div className="flex justify-between gap-2">
+              <div>
                 <dt>Account</dt>
                 <dd className="truncate text-foreground">
                   {card.account_email ?? card.display_name}
                 </dd>
               </div>
             )}
-            {isNotion && workspaceName && (
-              <div className="flex justify-between gap-2">
+            {isNotion && (card.settings.workspace_name as string | undefined) && (
+              <div>
                 <dt>Workspace</dt>
-                <dd className="truncate text-foreground">{workspaceName}</dd>
+                <dd className="truncate text-foreground">
+                  {card.settings.workspace_name as string}
+                </dd>
               </div>
             )}
-            {isPlatform && openaiModel && (
-              <div className="flex justify-between gap-2">
+            {isOpenAI && (card.settings.model as string | undefined) && (
+              <div>
                 <dt>Model</dt>
-                <dd className="text-foreground">{openaiModel}</dd>
+                <dd className="font-mono text-foreground">
+                  {card.settings.model as string}
+                </dd>
               </div>
             )}
-            {isN8n && instanceUrl && (
-              <>
-                <div className="flex justify-between gap-2">
-                  <dt>Instance</dt>
-                  <dd className="truncate text-foreground font-mono text-[11px]">
-                    {instanceUrl}
-                  </dd>
-                </div>
-                {version && (
-                  <div className="flex justify-between gap-2">
-                    <dt>Version</dt>
-                    <dd className="text-foreground">{version}</dd>
-                  </div>
-                )}
-                <div className="flex justify-between gap-2">
-                  <dt>Workflows imported</dt>
-                  <dd className="text-foreground">{workflowsImported ?? 0}</dd>
-                </div>
-              </>
+            {isN8n && (card.settings.instance_url as string | undefined) && (
+              <div className="col-span-2">
+                <dt>Instance</dt>
+                <dd className="truncate font-mono text-[11px] text-foreground">
+                  {card.settings.instance_url as string}
+                </dd>
+              </div>
             )}
           </dl>
+        )}
+
+        {showMetrics && (
+          <div className="border-t pt-3">
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="mb-2 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+              Live metrics
+            </button>
+            {expanded && (
+              <IntegrationMetricsPanel
+                slug={card.slug}
+                token={token ?? ""}
+                openaiConfigured={isOpenAIConfigured()}
+                initial={card.metrics ?? {}}
+              />
+            )}
+          </div>
         )}
       </CardContent>
 

@@ -26,38 +26,11 @@ ToolExecutor = Callable[[str, dict[str, Any]], Awaitable[dict[str, Any]]]
 
 
 def execute_tool_stub(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
-    """Execute a registered tool (stub implementations for CRM actions)."""
-    if name == "lookup_contact":
-        query = arguments.get("query", "")
-        return {
-            "found": True,
-            "contact": {
-                "id": "contact-001",
-                "name": query.split("@")[0].replace(".", " ").title() if "@" in query else query,
-                "email": query if "@" in query else f"{query.lower().replace(' ', '.')}@example.com",
-                "company": "Acme Corp",
-                "title": "VP of Engineering",
-                "status": "active",
-            },
-        }
-    if name == "schedule_meeting":
-        return {
-            "scheduled": True,
-            "meeting_id": "mtg-001",
-            "title": arguments.get("title"),
-            "datetime": arguments.get("datetime"),
-            "attendees": [arguments.get("contact_email")],
-            "calendar_link": "https://calendar.example.com/mtg-001",
-        }
-    if name == "send_email":
-        return {
-            "sent": True,
-            "message_id": "msg-001",
-            "to": arguments.get("to"),
-            "subject": arguments.get("subject"),
-            "status": "queued",
-        }
-    return {"error": f"Unknown tool: {name}"}
+    """Fallback when no real tool executor is wired. Never fabricates CRM or email data."""
+    return {
+        "error": f"Tool '{name}' is not available in this context — no live tool executor was provided.",
+        "available": False,
+    }
 
 
 def _normalize_tools(tools: list[dict[str, Any]] | None) -> list[dict[str, Any]] | None:

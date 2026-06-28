@@ -153,37 +153,47 @@ export function useCrmEntity(entity: CrmListEntity, skip = false) {
 
   const [createCompany, createCompanyState] = useCreateCompanyMutation({
     update: makeCreateUpdater(ListCompaniesDocument, "companies"),
+    refetchQueries: [{ query: ListCompaniesDocument, variables: { pagination: LIST_PAGINATION } }],
   });
   const [deleteCompany, deleteCompanyState] = useDeleteCompanyMutation({
     update: makeDeleteUpdater(ListCompaniesDocument, "companies", "Company"),
+    refetchQueries: [{ query: ListCompaniesDocument, variables: { pagination: LIST_PAGINATION } }],
   });
 
   const [createContact, createContactState] = useCreateContactMutation({
     update: makeCreateUpdater(ListContactsDocument, "contacts"),
+    refetchQueries: [{ query: ListContactsDocument, variables: { pagination: LIST_PAGINATION } }],
   });
   const [deleteContact, deleteContactState] = useDeleteContactMutation({
     update: makeDeleteUpdater(ListContactsDocument, "contacts", "Contact"),
+    refetchQueries: [{ query: ListContactsDocument, variables: { pagination: LIST_PAGINATION } }],
   });
 
   const [createLead, createLeadState] = useCreateLeadMutation({
     update: makeCreateUpdater(ListLeadsDocument, "leads"),
+    refetchQueries: [{ query: ListLeadsDocument, variables: { pagination: LIST_PAGINATION } }],
   });
   const [deleteLead, deleteLeadState] = useDeleteLeadMutation({
     update: makeDeleteUpdater(ListLeadsDocument, "leads", "Lead"),
+    refetchQueries: [{ query: ListLeadsDocument, variables: { pagination: LIST_PAGINATION } }],
   });
 
   const [createDeal, createDealState] = useCreateDealMutation({
     update: makeCreateUpdater(ListDealsDocument, "deals"),
+    refetchQueries: [{ query: ListDealsDocument, variables: { pagination: LIST_PAGINATION } }],
   });
   const [deleteDeal, deleteDealState] = useDeleteDealMutation({
     update: makeDeleteUpdater(ListDealsDocument, "deals", "Deal"),
+    refetchQueries: [{ query: ListDealsDocument, variables: { pagination: LIST_PAGINATION } }],
   });
 
   const [createTask, createTaskState] = useCreateTaskMutation({
     update: makeCreateUpdater(ListTasksDocument, "tasks"),
+    refetchQueries: [{ query: ListTasksDocument, variables: { pagination: LIST_PAGINATION } }],
   });
   const [deleteTask, deleteTaskState] = useDeleteTaskMutation({
     update: makeDeleteUpdater(ListTasksDocument, "tasks", "Task"),
+    refetchQueries: [{ query: ListTasksDocument, variables: { pagination: LIST_PAGINATION } }],
   });
 
   const config = {

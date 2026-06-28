@@ -29,6 +29,23 @@ class NotionSyncNoteRequest(BaseModel):
     entity_name: str | None = None
 
 
+class NotionDatabaseCreateRequest(BaseModel):
+    parent_page_id: str = Field(min_length=1)
+    title: str = Field(min_length=1, max_length=2000)
+    properties: dict[str, Any] | None = None
+
+
+class NotionDatabaseItemRequest(BaseModel):
+    database_id: str = Field(min_length=1)
+    properties: dict[str, Any] = Field(default_factory=dict)
+    content: str | None = None
+
+
+class NotionDatabaseUpdateItemRequest(BaseModel):
+    page_id: str = Field(min_length=1)
+    properties: dict[str, Any] = Field(default_factory=dict)
+
+
 class NotionActionResponse(BaseModel):
     success: bool
     notion_response: dict[str, Any] = Field(default_factory=dict)

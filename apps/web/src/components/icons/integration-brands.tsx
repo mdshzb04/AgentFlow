@@ -24,7 +24,7 @@ const BRAND_META: Record<
   sheets: { local: "/integrations/sheets.svg" },
   github: { useGitHubSvg: true },
   n8n: { local: "/integrations/n8n.svg" },
-  notion: { local: "/integrations/notion.svg" },
+  notion: { local: "/integrations/notion.svg", lightBg: true },
   webhooks: {},
   postgresql: { local: "/integrations/postgresql.svg" },
 };
@@ -79,6 +79,27 @@ export function IntegrationBrandLogo({
   }
 
   if (meta.local) {
+    if (meta.lightBg) {
+      return (
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center justify-center rounded-md bg-white p-0.5",
+            className,
+          )}
+          style={{ width: size, height: size }}
+          aria-hidden
+        >
+          <Image
+            src={meta.local}
+            alt=""
+            width={size - 4}
+            height={size - 4}
+            className="object-contain"
+            aria-hidden
+          />
+        </span>
+      );
+    }
     return (
       <Image
         src={meta.local}

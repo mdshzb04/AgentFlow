@@ -226,14 +226,20 @@ class WebhookService:
     async def retry_log(
         self, db: AsyncSession, log: WebhookLog, user_id: uuid.UUID
     ) -> WebhookLog:
-        endpoint = await self.get_endpoint(db, log.endpoint_id, user_id)
-        if endpoint is None:
-            raise ValueError("Endpoint not found")
-        log.retry_count += 1
-        log.status = WebhookLogStatus.PENDING
-        log.error_message = None
-        await db.flush()
-        return log
+        from app.services.integrations.webhook_delivery import retry_log_delivery
+
+        return await retry_log_delivery(db, log, user_id)
+
+    async def deliver_outgoing(
+        self, db: AsyncSession, endpoint: WebhookEndpoint, payload: dict[str, Any]
+    ) -> WebhookLog:
+        from app.services.integrations.webhook_delivery import deliver_outgoing as _deliver
+
+        secret = ""
+        if endpoint.connection_id:
+            creds = await connection_service.get_credentials(db, endpoint.connection_id)
+            secret = creds.get("secret", "")
+        return await _deliver(db, endpoint, payload, secret=secret)
 
 
 webhook_service = WebhookService()

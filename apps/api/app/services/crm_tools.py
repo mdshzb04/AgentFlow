@@ -130,13 +130,69 @@ async def execute_crm_tool(
         }
 
     if name == "send_email":
+        return await _send_email_via_gmail(db, user_id, arguments)
+
+
+async def _send_email_via_gmail(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    arguments: dict[str, Any],
+) -> dict[str, Any]:
+    """Send a real email through the user's connected Gmail account.
+
+    Falls back to an honest 'not connected' result instead of a fake queued draft.
+    """
+    from datetime import UTC, datetime
+
+    from app.services.integrations.accounts import list_accounts
+    from app.services.integrations.gmail import send_gmail
+    from app.models.integration import IntegrationProvider
+    from app.models.integration_platform import IntegrationAuditLog
+
+    to = arguments.get("to", "")
+    subject = arguments.get("subject", "")
+    body = arguments.get("body") or arguments.get("content") or ""
+
+    accounts = await list_accounts(db, user_id, provider=IntegrationProvider.GMAIL)
+    if not accounts:
+        return {
+            "sent": False,
+            "to": to,
+            "subject": subject,
+            "status": "not_connected",
+            "error": "No Gmail account connected. Connect Gmail on the Integrations page to send email.",
+        }
+
+    account = accounts[0]
+    config = {"to": to, "subject": subject, "body": body}
+    audit = IntegrationAuditLog(
+        user_id=user_id,
+        action="gmail_send",
+        details={"to": to, "subject": subject},
+    )
+    try:
+        result = await send_gmail(db, user_id, account, config, {})
+        audit.details = {**audit.details, "status": "sent", "message_id": result.get("id")}
+        db.add(audit)
+        await db.flush()
         return {
             "sent": True,
-            "message_id": f"draft-{uuid.uuid4().hex[:8]}",
-            "to": arguments.get("to"),
-            "subject": arguments.get("subject"),
-            "status": "queued",
-            "note": "Use Gmail integration node to send via connected account",
+            "message_id": result.get("id"),
+            "to": to,
+            "subject": subject,
+            "status": "sent",
+            "from": account.account_email,
+        }
+    except Exception as exc:
+        audit.details = {**audit.details, "status": "failed", "error": str(exc)}
+        db.add(audit)
+        await db.flush()
+        return {
+            "sent": False,
+            "to": to,
+            "subject": subject,
+            "status": "failed",
+            "error": str(exc),
         }
 
     return {"error": f"Unknown tool: {name}"}

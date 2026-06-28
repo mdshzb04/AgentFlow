@@ -51,12 +51,21 @@ _GQL_ENUM_BY_NAME = {
 
 
 def to_gql_enum(value: Any, gql_enum_cls: type[enum.Enum]) -> enum.Enum | None:
-    """Convert a SQLAlchemy model enum (or raw value) to the matching GraphQL enum."""
+    """Convert a SQLAlchemy model enum (or raw value) to the matching GraphQL enum.
+
+    The DB may store either lowercase ("new") or uppercase ("NEW") depending on
+    when the row was created. The GraphQL schema and the Python GraphQL enum
+    use lowercase names, so we always coerce to lowercase before lookup.
+    """
     if value is None:
         return None
     raw = value.value if hasattr(value, "value") else value
+    raw_lower = str(raw).lower()
     try:
-        return gql_enum_cls(raw)
+        return gql_enum_cls(raw_lower)
     except ValueError:
         # Fall back to name-based lookup for safety.
-        return gql_enum_cls[str(raw).upper()]
+        try:
+            return gql_enum_cls[str(raw).upper()]
+        except (KeyError, ValueError):
+            return None

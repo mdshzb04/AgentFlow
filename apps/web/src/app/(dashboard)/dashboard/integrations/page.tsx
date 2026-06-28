@@ -16,6 +16,8 @@ import {
   N8nSettingsModal,
 } from "@/components/integrations/n8n-settings-modal";
 import { NotionConnectDialog } from "@/components/integrations/notion-connect-dialog";
+import { AiRequestHistory } from "@/components/integrations/ai-request-history";
+import { WebhookDeliveries } from "@/components/integrations/webhook-deliveries";
 import { useAuth } from "@/components/providers/auth-provider";
 import { ApiError } from "@/lib/api";
 import {
@@ -235,6 +237,11 @@ function IntegrationsContent() {
             })}
           </div>
         )}
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <AiRequestHistory />
+          <WebhookDeliveries />
+        </div>
       </div>
 
       {token && (

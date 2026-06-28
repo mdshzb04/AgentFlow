@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class IntegrationCardRead(BaseModel):
@@ -19,6 +19,7 @@ class IntegrationCardRead(BaseModel):
     last_error: str | None = None
     connect_url: str | None = None
     settings: dict[str, Any] = Field(default_factory=dict)
+    metrics: dict[str, Any] = Field(default_factory=dict)
 
 
 class IntegrationStatusRead(BaseModel):
@@ -27,6 +28,16 @@ class IntegrationStatusRead(BaseModel):
     disconnected: int
     unhealthy: int
     providers: list[IntegrationCardRead]
+
+
+class IntegrationMetricsResponse(BaseModel):
+    google_sheets: dict[str, Any] = Field(default_factory=dict)
+    notion: dict[str, Any] = Field(default_factory=dict)
+    gmail: dict[str, Any] = Field(default_factory=dict)
+    openai: dict[str, Any] = Field(default_factory=dict)
+    n8n: dict[str, Any] = Field(default_factory=dict)
+    webhooks: dict[str, Any] = Field(default_factory=dict)
+    generated_at: str | None = None
 
 
 class IntegrationConnectRequest(BaseModel):
@@ -101,6 +112,8 @@ class WebhookCreateResponse(BaseModel):
 
 
 class WebhookLogRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: uuid.UUID
     endpoint_id: uuid.UUID
     direction: str
@@ -117,3 +130,8 @@ class WebhookLogRead(BaseModel):
 class WebhookRotateResponse(BaseModel):
     secret: str
     message: str = "Secret rotated. Save this value — it will not be shown again."
+
+
+class WebhookDeliverRequest(BaseModel):
+    endpoint_id: uuid.UUID
+    payload: dict[str, Any] = Field(default_factory=dict)

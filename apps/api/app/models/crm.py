@@ -10,33 +10,33 @@ from app.core.database import Base
 
 
 class LeadStatus(str, enum.Enum):
-    NEW = "new"
-    CONTACTED = "contacted"
-    QUALIFIED = "qualified"
-    CONVERTED = "converted"
-    LOST = "lost"
+    NEW = "NEW"
+    CONTACTED = "CONTACTED"
+    QUALIFIED = "QUALIFIED"
+    CONVERTED = "CONVERTED"
+    LOST = "LOST"
 
 
 class DealStage(str, enum.Enum):
-    PROSPECTING = "prospecting"
-    QUALIFICATION = "qualification"
-    PROPOSAL = "proposal"
-    NEGOTIATION = "negotiation"
-    CLOSED_WON = "closed_won"
-    CLOSED_LOST = "closed_lost"
+    PROSPECTING = "PROSPECTING"
+    QUALIFICATION = "QUALIFICATION"
+    PROPOSAL = "PROPOSAL"
+    NEGOTIATION = "NEGOTIATION"
+    CLOSED_WON = "CLOSED_WON"
+    CLOSED_LOST = "CLOSED_LOST"
 
 
 class TaskStatus(str, enum.Enum):
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
 
 
 class TaskPriority(str, enum.Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
 
 
 class CrmEntityType(str, enum.Enum):

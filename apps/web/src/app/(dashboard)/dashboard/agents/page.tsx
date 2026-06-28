@@ -14,7 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Bot, History, Sparkles } from "lucide-react";
+import { History, Sparkles } from "lucide-react";
 
 export default function AgentsPage() {
   const { token } = useAuth();
@@ -23,10 +23,10 @@ export default function AgentsPage() {
     <DashboardShell>
       <DashboardHeader
         title="AI Agents"
-        description="Run OpenAI and Claude agents with prompt templates"
+        description="Run OpenAI agents with prompt templates"
       />
       <div className="flex flex-1 flex-col gap-6 p-4 pt-0">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Card>
             <CardHeader className="pb-2">
               <Sparkles className="mb-2 size-5 text-violet-500" />
@@ -35,17 +35,6 @@ export default function AgentsPage() {
             <CardContent>
               <CardDescription>
                 Lead qualification, email generation, and meeting summaries built-in.
-              </CardDescription>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <Bot className="mb-2 size-5 text-blue-500" />
-              <CardTitle className="text-base">Multi-Provider</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CardDescription>
-                Switch between OpenAI and Claude per execution.
               </CardDescription>
             </CardContent>
           </Card>

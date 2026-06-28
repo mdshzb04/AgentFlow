@@ -11,10 +11,10 @@ from app.core.database import Base
 
 
 class ConnectionStatus(str, enum.Enum):
-    CONNECTED = "connected"
-    DISCONNECTED = "disconnected"
-    ERROR = "error"
-    EXPIRED = "expired"
+    CONNECTED = "CONNECTED"
+    DISCONNECTED = "DISCONNECTED"
+    ERROR = "ERROR"
+    EXPIRED = "EXPIRED"
 
 
 class WebhookDirection(str, enum.Enum):
@@ -23,16 +23,16 @@ class WebhookDirection(str, enum.Enum):
 
 
 class WebhookLogStatus(str, enum.Enum):
-    PENDING = "pending"
-    SUCCESS = "success"
-    FAILED = "failed"
+    PENDING = "PENDING"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
 
 
 class SyncJobStatus(str, enum.Enum):
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 
 class Integration(Base):
@@ -205,6 +205,33 @@ class WebhookLog(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
+class EmailLog(Base):
+    __tablename__ = "email_logs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    connection_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("integration_connections.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    to_address: Mapped[str] = mapped_column(String(512), nullable=False)
+    from_address: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    subject: Mapped[str] = mapped_column(Text, nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    provider_message_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    thread_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="sent", nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    related_entity: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    related_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+
+
 class SyncJob(Base):
     __tablename__ = "sync_jobs"
 
@@ -254,6 +281,44 @@ class WorkflowImport(Base):
     import_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+
+
+class CrmSyncMapping(Base):
+    """Maps a CRM record to its remote counterpart in an external integration."""
+
+    __tablename__ = "crm_sync_mappings"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    connection_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("integration_connections.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    provider: Mapped[str] = mapped_column(String(32), nullable=False)  # google_sheets | notion
+    entity_type: Mapped[str] = mapped_column(String(32), nullable=False)  # lead | contact | company | deal | task | note
+    record_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    remote_id: Mapped[str] = mapped_column(String(512), nullable=False)  # sheets row number or notion page id
+    remote_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sync_metadata: Mapped[dict[str, Any]] = mapped_column("metadata", JSONB, nullable=False, default=dict)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint("connection_id", "entity_type", "record_id", "provider", name="uq_crm_sync_mapping"),
     )
 
 

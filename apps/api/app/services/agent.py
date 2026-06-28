@@ -12,6 +12,7 @@ from app.models.agent import AgentExecution, ExecutionStatus, OutputMode, Prompt
 from app.schemas.agent import AgentRunRequest, PromptTemplateCreate
 from app.services.crm_tools import execute_crm_tool
 from app.services.llm import call_llm
+from app.services.ai.ai_request_log_service import log_ai_request, start_timer
 from app.services.prompt_templates import (
     get_builtin_template,
     list_builtin_templates,
@@ -194,6 +195,7 @@ async def run_agent(
     await db.flush()
 
     start = time.monotonic()
+    llm_timer = start_timer()
     try:
         async def tool_executor(name: str, args: dict[str, Any]) -> dict[str, Any]:
             return await execute_crm_tool(db, user_id, name, args)
@@ -210,6 +212,24 @@ async def run_agent(
             temperature=request.temperature,
             max_tokens=request.max_tokens,
             tool_executor=tool_executor,
+        )
+
+        await log_ai_request(
+            db,
+            user_id=user_id,
+            provider=provider,
+            model=model,
+            usage=response.usage,
+            latency_ms=llm_timer.elapsed_ms(),
+            status="success",  # type: ignore[arg-type]
+            request_preview=user_prompt,
+            response_preview=response.content,
+            metadata={
+                "template": request.template,
+                "output_mode": output_mode,
+                "workflow_id": str(request.workflow_id) if request.workflow_id else None,
+                "node_id": request.node_id,
+            },
         )
 
         execution.status = ExecutionStatus.COMPLETED
@@ -230,6 +250,18 @@ async def run_agent(
             ],
         ]
     except Exception as exc:
+        await log_ai_request(
+            db,
+            user_id=user_id,
+            provider=provider,
+            model=model,
+            usage=None,
+            latency_ms=llm_timer.elapsed_ms(),
+            status="failed",  # type: ignore[arg-type]
+            request_preview=user_prompt,
+            error_message=str(exc),
+            metadata={"template": request.template},
+        )
         execution.status = ExecutionStatus.FAILED
         execution.error_message = str(exc)
 

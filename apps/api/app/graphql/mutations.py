@@ -463,9 +463,9 @@ class Mutation:
                 message="n8n connected successfully",
             )
         if input.provider == "notion":
-            api_key = input.api_key or settings.notion_api_key
+            api_key = (input.api_key or "").strip()
             if not api_key:
-                raise ValidationError("Notion API key not configured")
+                raise ValidationError("api_key is required to connect Notion")
             connection = await connection_service.create_notion_connection(
                 info.context.db, info.context.user_id, api_key=api_key
             )

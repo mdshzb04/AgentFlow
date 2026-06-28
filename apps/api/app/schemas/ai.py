@@ -30,6 +30,18 @@ class AIChatResponse(BaseModel):
 class AISummarizeRequest(BaseModel):
     text: str = Field(min_length=1)
     context: str = ""
+    title: str | None = None
+    save_to_notion: bool = False
+    related_entity: str | None = None
+    related_id: str | None = None
+
+
+class AISummarizeResponse(BaseModel):
+    summary: str
+    notion_remote_id: str | None = None
+    notion_remote_url: str | None = None
+    notion_synced: bool = False
+    notion_error: str | None = None
 
 
 class AIEmailRequest(BaseModel):
@@ -53,3 +65,14 @@ class AITextToSpeechRequest(BaseModel):
 class AITextToSpeechResponse(BaseModel):
     audio_base64: str
     content_type: str = "audio/mpeg"
+
+
+class AISpeechToTextResponse(BaseModel):
+    text: str
+    save_to_notion: bool = False
+    title: str | None = None
+    related_entity: str | None = None
+    related_id: str | None = None
+    notion_remote_id: str | None = None
+    notion_remote_url: str | None = None
+    notion_synced: bool = False

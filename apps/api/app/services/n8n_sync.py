@@ -244,7 +244,9 @@ async def import_workflow(
     if workflow_json:
         _validate_workflow_json(workflow_json)
         n8n_data = workflow_json
-        remote_id = str(workflow_json.get("id", "")) or None
+        # A JSON file's `id` is not a live remote id on the user's n8n instance —
+        # don't treat it as one. The real id is captured after Push to n8n.
+        remote_id = None
         wf_name = name or workflow_json.get("name", "Imported from n8n")
     elif n8n_workflow_id:
         if account is None:
@@ -503,15 +505,22 @@ async def trigger_n8n_workflow(
             if wf_resp.status_code < 400:
                 webhook = extract_webhook_url(wf_resp.json(), base_url)
             if not webhook:
+                if wf_resp.status_code == 404:
+                    error_msg = (
+                        "This workflow hasn't been pushed to n8n yet (n8n could not find it). "
+                        "Click \"Push to n8n\" first, then Trigger n8n."
+                    )
+                else:
+                    error_msg = (
+                        "This n8n version does not support REST execution and no Webhook trigger "
+                        "node URL could be resolved. Add a Webhook trigger node to the workflow, "
+                        "push again, then use Trigger n8n."
+                    )
                 return {
                     "success": False,
                     "n8n_workflow_id": n8n_workflow_id,
-                    "error": (
-                        "This n8n version does not support REST execution. "
-                        "Add a Webhook trigger node to the workflow and push again, "
-                        "then use Trigger n8n."
-                    ),
-                    "response": {"status_code": 405},
+                    "error": error_msg,
+                    "response": {"status_code": wf_resp.status_code},
                     "method": "api",
                 }
             if not await _activate_n8n_workflow(client, base_url, headers, n8n_workflow_id):

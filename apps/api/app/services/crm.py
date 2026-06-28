@@ -34,6 +34,26 @@ from app.schemas.crm import (
 )
 
 
+async def _sync_after(
+    db: AsyncSession, user_id: uuid.UUID, entity: str, record: Any
+) -> None:
+    try:
+        from app.services.integrations.crm_sync_service import sync_crm_record
+
+        await sync_crm_record(db, user_id, entity, record)
+    except Exception:
+        pass
+
+    # Broadcast the change to connected n8n instances so external workflows
+    # can react (e.g. a n8n flow that sends a Slack alert when a new lead lands).
+    try:
+        from app.services.integrations.crm_sync_service import broadcast_crm_event_to_n8n
+
+        await broadcast_crm_event_to_n8n(db, user_id, entity, record)
+    except Exception:
+        pass
+
+
 def _resolve_template(value: Any, context: dict[str, Any]) -> Any:
     if not isinstance(value, str):
         return value
@@ -117,6 +137,7 @@ async def create_company(db: AsyncSession, user_id: uuid.UUID, data: CompanyCrea
     company = Company(user_id=user_id, **data.model_dump())
     db.add(company)
     await db.flush()
+    await _sync_after(db, user_id, "company", company)
     return company
 
 
@@ -126,6 +147,7 @@ async def update_company(
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(company, key, val)
     await db.flush()
+    await _sync_after(db, company.user_id, "company", company)
     return company
 
 
@@ -169,6 +191,7 @@ async def create_contact(db: AsyncSession, user_id: uuid.UUID, data: ContactCrea
     contact = Contact(user_id=user_id, **data.model_dump())
     db.add(contact)
     await db.flush()
+    await _sync_after(db, user_id, "contact", contact)
     return contact
 
 
@@ -176,6 +199,7 @@ async def update_contact(db: AsyncSession, contact: Contact, data: ContactUpdate
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(contact, key, val)
     await db.flush()
+    await _sync_after(db, contact.user_id, "contact", contact)
     return contact
 
 
@@ -204,6 +228,7 @@ async def create_lead(db: AsyncSession, user_id: uuid.UUID, data: LeadCreate) ->
     lead = Lead(user_id=user_id, **data.model_dump())
     db.add(lead)
     await db.flush()
+    await _sync_after(db, user_id, "lead", lead)
     return lead
 
 
@@ -211,6 +236,7 @@ async def update_lead(db: AsyncSession, lead: Lead, data: LeadUpdate) -> Lead:
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(lead, key, val)
     await db.flush()
+    await _sync_after(db, lead.user_id, "lead", lead)
     return lead
 
 
@@ -239,6 +265,7 @@ async def create_deal(db: AsyncSession, user_id: uuid.UUID, data: DealCreate) ->
     deal = Deal(user_id=user_id, **data.model_dump())
     db.add(deal)
     await db.flush()
+    await _sync_after(db, user_id, "deal", deal)
     return deal
 
 
@@ -246,6 +273,7 @@ async def update_deal(db: AsyncSession, deal: Deal, data: DealUpdate) -> Deal:
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(deal, key, val)
     await db.flush()
+    await _sync_after(db, deal.user_id, "deal", deal)
     return deal
 
 
@@ -274,6 +302,7 @@ async def create_task(db: AsyncSession, user_id: uuid.UUID, data: TaskCreate) ->
     task = Task(user_id=user_id, **data.model_dump())
     db.add(task)
     await db.flush()
+    await _sync_after(db, user_id, "task", task)
     return task
 
 
@@ -281,6 +310,7 @@ async def update_task(db: AsyncSession, task: Task, data: TaskUpdate) -> Task:
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(task, key, val)
     await db.flush()
+    await _sync_after(db, task.user_id, "task", task)
     return task
 
 
@@ -318,6 +348,7 @@ async def create_note(db: AsyncSession, user_id: uuid.UUID, data: NoteCreate) ->
     note = Note(user_id=user_id, **data.model_dump())
     db.add(note)
     await db.flush()
+    await _sync_after(db, user_id, "note", note)
     return note
 
 
@@ -325,6 +356,7 @@ async def update_note(db: AsyncSession, note: Note, data: NoteUpdate) -> Note:
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(note, key, val)
     await db.flush()
+    await _sync_after(db, note.user_id, "note", note)
     return note
 
 

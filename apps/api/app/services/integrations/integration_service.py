@@ -18,16 +18,17 @@ from app.models.integration_platform import (
 )
 from app.core.config import get_settings
 from app.services.integrations.connection_service import connection_service
+from app.services.integrations.integration_metrics import all_metrics
 from app.services.ai.openai_service import openai_service
 
 PROVIDER_CARDS = [
     {"slug": "openai", "name": "OpenAI", "description": "Chat, summaries, speech, and CRM AI", "auth_type": "platform"},
-    {"slug": "notion", "name": "Notion", "description": "Sync notes, summaries, and meeting notes to Notion", "auth_type": "api_key"},
+    {"slug": "notion", "name": "Notion", "description": "Two-way CRM sync to a Notion database — every create or update in AgentFlow is mirrored to Notion", "auth_type": "api_key"},
     {"slug": "gmail", "name": "Gmail", "description": "Send and read emails", "auth_type": "oauth"},
     {
         "slug": "google_sheets",
         "name": "Google Sheets",
-        "description": "Read and append spreadsheet rows",
+        "description": "Real-time CRM sync to a Google Sheet — every lead, contact, company, deal, task, and note is mirrored to its own tab",
         "auth_type": "oauth",
     },
     {"slug": "n8n", "name": "n8n", "description": "Import and sync automation workflows", "auth_type": "api_key"},
@@ -56,6 +57,9 @@ class IntegrationService:
         for conn, integration in connections:
             by_slug.setdefault(integration.slug, []).append((conn, integration))
 
+        # Compute live metrics once and slice per slug.
+        metrics = await all_metrics(db, user_id)
+
         cards: list[dict[str, Any]] = []
         for meta in PROVIDER_CARDS:
             slug = meta["slug"]
@@ -74,7 +78,7 @@ class IntegrationService:
                 "name": meta["name"],
                 "description": meta["description"],
                 "auth_type": meta["auth_type"],
-                "status": "disconnected",
+                "status": ConnectionStatus.DISCONNECTED.value,
                 "health_status": "unknown",
                 "connection_id": None,
                 "account_email": None,
@@ -85,6 +89,7 @@ class IntegrationService:
                 if _oauth_connect_available(slug)
                 else None,
                 "settings": {},
+                "metrics": metrics.get(slug, {}),
             }
 
             if slug == "openai":
@@ -94,7 +99,7 @@ class IntegrationService:
                     healthy = bool(health.get("healthy"))
                     card.update(
                         {
-                            "status": "connected",
+                            "status": ConnectionStatus.CONNECTED.value,
                             "health_status": "healthy" if (has_run and healthy) else ("error" if has_run else "unknown"),
                             "display_name": "OpenAI",
                             "last_error": None if healthy else health.get("message"),
@@ -110,7 +115,7 @@ class IntegrationService:
             if active and active_integration:
                 card.update(
                     {
-                        "status": "connected",
+                        "status": ConnectionStatus.CONNECTED.value,
                         "health_status": active.health_status,
                         "connection_id": str(active.id),
                         "account_email": active.account_email,

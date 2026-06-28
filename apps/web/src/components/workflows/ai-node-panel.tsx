@@ -93,7 +93,6 @@ export function AiNodePanel({ node, onUpdate, token }: AiNodePanelProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="openai">OpenAI</SelectItem>
-              <SelectItem value="anthropic">Claude</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -104,7 +103,7 @@ export function AiNodePanel({ node, onUpdate, token }: AiNodePanelProps) {
             className="flex h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm"
             value={config.model ?? ""}
             onChange={(e) => update({ model: e.target.value || undefined })}
-            placeholder="gpt-4o / claude-sonnet-4-..."
+            placeholder="gpt-4o / gpt-4o-mini"
           />
         </div>
 

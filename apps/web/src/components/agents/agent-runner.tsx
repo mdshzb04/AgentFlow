@@ -54,8 +54,10 @@ export function AgentRunner({ token, onExecuted }: AgentRunnerProps) {
   }, [selectedSlug]);
 
   useEffect(() => {
-    if (selectedTemplate?.default_provider) {
-      setProvider(selectedTemplate.default_provider);
+    if (selectedTemplate?.default_provider === "openai") {
+      setProvider("openai");
+    } else {
+      setProvider("openai");
     }
   }, [selectedTemplate]);
 
@@ -122,7 +124,6 @@ export function AgentRunner({ token, onExecuted }: AgentRunnerProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="openai">OpenAI</SelectItem>
-              <SelectItem value="anthropic">Claude (Anthropic)</SelectItem>
             </SelectContent>
           </Select>
         </div>

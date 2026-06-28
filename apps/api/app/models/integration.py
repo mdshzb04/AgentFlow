@@ -19,9 +19,9 @@ class IntegrationProvider(str, enum.Enum):
 
 
 class AccountStatus(str, enum.Enum):
-    ACTIVE = "active"
-    EXPIRED = "expired"
-    REVOKED = "revoked"
+    ACTIVE = "ACTIVE"
+    EXPIRED = "EXPIRED"
+    REVOKED = "REVOKED"
 
 
 class IntegrationAccount(Base):
@@ -71,10 +71,10 @@ class IntegrationAccount(Base):
 
 
 class WorkflowExecutionStatus(str, enum.Enum):
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
 
 
 class WorkflowExecution(Base):

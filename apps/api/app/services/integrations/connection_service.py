@@ -108,22 +108,56 @@ class ConnectionService:
         if not api_key:
             raise ValueError("api_key is required")
 
-        request_url = resolve_n8n_base_url(base_url)
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            try:
-                resp = await client.get(
-                    f"{request_url}/api/v1/workflows",
-                    headers={"X-N8N-API-KEY": api_key},
-                    params={"limit": 1},
-                )
-            except httpx.HTTPError as exc:
-                raise ValueError(format_n8n_connection_error(exc, base_url)) from exc
-            if resp.status_code == 401:
-                raise ValueError("Invalid n8n API key")
-            if resp.status_code == 404:
-                raise ValueError("n8n API not found at that base URL")
-            if resp.status_code >= 400:
-                raise ValueError(f"n8n returned {resp.status_code}")
+        # Try the requested URL first, then fall back to host.docker.internal if it
+        # fails — the user may have typed localhost from the browser and the API
+        # runs in Docker.
+        candidates: list[str] = []
+        resolved = resolve_n8n_base_url(base_url)
+        candidates.append(resolved)
+        if "host.docker.internal" not in resolved and "localhost" in base_url:
+            # Try the docker-internal host too.
+            from urllib.parse import urlparse, urlunparse
+            parsed = urlparse(resolved)
+            port = f":{parsed.port}" if parsed.port else ""
+            candidates.append(f"{parsed.scheme}://host.docker.internal{port}")
+
+        last_error: Exception | None = None
+        for request_url in candidates:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                try:
+                    resp = await client.get(
+                        f"{request_url}/api/v1/workflows",
+                        headers={"X-N8N-API-KEY": api_key},
+                        params={"limit": 1},
+                    )
+                except httpx.HTTPError as exc:
+                    last_error = exc
+                    continue
+
+                if resp.status_code == 401:
+                    body = ""
+                    try:
+                        body = (resp.json().get("message") or "").strip()
+                    except Exception:
+                        body = resp.text[:120].strip()
+                    detail = f" ({body})" if body and body.lower() != "unauthorized" else ""
+                    raise ValueError(
+                        f"Invalid n8n API key{detail}. "
+                        f"Create a key in n8n: Settings → API → Create API key. "
+                        f"If the n8n URL is correct, double-check the key has not been revoked."
+                    )
+                if resp.status_code == 404:
+                    # Try the next candidate; this n8n URL is wrong.
+                    last_error = ValueError(f"n8n API not found at {request_url}")
+                    continue
+                if resp.status_code >= 400:
+                    raise ValueError(f"n8n returned HTTP {resp.status_code} from {request_url}")
+                return  # success
+
+        # All candidates failed
+        if last_error is not None:
+            raise ValueError(format_n8n_connection_error(last_error, base_url)) from last_error
+        raise ValueError("n8n preflight failed for all candidate URLs")
 
     async def get_credentials(
         self, db: AsyncSession, connection_id: uuid.UUID

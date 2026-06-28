@@ -20,6 +20,7 @@ from app.services import workflow as workflow_service
 from app.services.integrations.accounts import get_account
 from app.services.integrations.gmail import execute_gmail
 from app.services.integrations.google_sheets import execute_sheets
+from app.services.integrations.notion_workflow import execute_notion_node
 from app.services.integrations.webhooks import outbound_webhook
 from app.services.crm_tools import execute_crm_node
 from app.services.n8n_sync import execute_n8n_node
@@ -68,7 +69,7 @@ async def _complete_step(
     step.completed_at = datetime.now(UTC)
 
 
-INTEGRATION_NODE_TYPES = {"gmail", "google_sheets", "webhook"}
+INTEGRATION_NODE_TYPES = {"gmail", "google_sheets", "webhook", "notion"}
 
 
 async def execute_workflow(
@@ -210,6 +211,8 @@ async def execute_workflow(
                     output = await outbound_webhook(config, context)
                 elif node_type == "webhook":
                     output = {"received": True, "payload": context}
+                elif node_type == "notion":
+                    output = await execute_notion_node(db, user_id, config, context)
                 else:
                     conn_id = config.get("connectionId")
                     if not conn_id:
@@ -221,7 +224,11 @@ async def execute_workflow(
                     step.integration_account_id = account_id
 
                     if node_type == "gmail":
-                        output = await execute_gmail(account, config, context)
+                        output = await execute_gmail(
+                            db, user_id, account, config, context,
+                            related_entity="workflow",
+                            related_id=workflow_id,
+                        )
                     elif node_type == "google_sheets":
                         output = await execute_sheets(account, config, context)
 
@@ -295,6 +302,34 @@ async def execute_workflow(
     )
     wf_exec.completed_at = datetime.now(UTC)
     await db.flush()
+
+    # Mirror every run to Notion as a workflow log entry (non-blocking).
+    try:
+        from app.services.integrations.crm_sync_service import sync_workflow_log
+
+        completed_steps = sum(1 for s in steps if getattr(s, "status", None) == "completed")
+        failed_steps = sum(1 for s in steps if getattr(s, "status", None) == "failed")
+        log_summary = (
+            f"Workflow {workflow_id} run {wf_exec.id}\n"
+            f"Status: {wf_exec.status.value}\n"
+            f"Trigger: {wf_exec.trigger_type}\n"
+            f"Steps: {len(steps)} ({completed_steps} completed, {failed_steps} failed)\n"
+            f"Duration: started={wf_exec.created_at.isoformat() if wf_exec.created_at else ''} "
+            f"ended={wf_exec.completed_at.isoformat() if wf_exec.completed_at else ''}"
+        )
+        if wf_exec.error_message:
+            log_summary += f"\nError: {wf_exec.error_message}"
+        await sync_workflow_log(
+            db,
+            user_id,
+            execution_id=str(wf_exec.id),
+            workflow_id=str(workflow_id),
+            status=wf_exec.status.value,
+            summary=log_summary,
+        )
+    except Exception:
+        pass
+
     return wf_exec, steps
 
 

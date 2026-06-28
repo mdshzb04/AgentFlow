@@ -28,6 +28,7 @@ from app.models.integration_platform import (  # noqa: F401
     WebhookLog,
     WorkflowImport,
 )
+from app.models.ai_request_log import AiRequestLog, AiRequestStatus  # noqa: F401
 
 config = context.config
 settings = get_settings()

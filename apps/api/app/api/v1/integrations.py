@@ -19,6 +19,7 @@ from app.schemas.integration_platform import (
     IntegrationConnectRequest,
     IntegrationConnectResponse,
     IntegrationConnectionDetail,
+    IntegrationMetricsResponse,
     IntegrationStatusRead,
     IntegrationTestRequest,
     IntegrationTestResponse,
@@ -36,6 +37,7 @@ from app.services.integrations.accounts import (
 )
 from app.services.integrations.connection_service import connection_service
 from app.services.integrations.health_check import health_check_service
+from app.services.integrations.integration_metrics import all_metrics
 from app.services.integrations.integration_service import integration_service
 from app.services.integrations.oauth_service import oauth_service
 
@@ -56,6 +58,18 @@ async def integration_status(current_user: CurrentUser, db: DbSession) -> Integr
     return IntegrationStatusRead(**summary)
 
 
+@router.get("/metrics", response_model=IntegrationMetricsResponse)
+async def integration_metrics(
+    current_user: CurrentUser, db: DbSession
+) -> IntegrationMetricsResponse:
+    """Live operational metrics for every integration (rows synced, emails sent,
+    AI tokens, webhook deliveries, n8n runs, etc.). All values come from the
+    database; integrations with no activity return zero counters and the
+    frontend renders an empty state."""
+    payload = await all_metrics(db, current_user.id)
+    return IntegrationMetricsResponse(**payload)
+
+
 @router.post("/connect", response_model=IntegrationConnectResponse)
 async def connect_integration(
     body: IntegrationConnectRequest,
@@ -65,13 +79,22 @@ async def connect_integration(
 ) -> IntegrationConnectResponse:
     ip = get_client_ip(request)
     if body.provider == "n8n":
-        if not body.base_url or not body.api_key:
-            raise HTTPException(status_code=400, detail="base_url and api_key required for n8n")
+        effective_base_url = (body.base_url or "").strip()
+        effective_api_key = (body.api_key or "").strip()
+        if not effective_base_url or not effective_api_key:
+            raise HTTPException(
+                status_code=400,
+                detail="base_url and api_key are required to connect n8n",
+            )
         from app.services.integrations.health_check import health_check_service as hc
 
         try:
             connection = await connection_service.create_n8n_connection(
-                db, current_user.id, base_url=body.base_url, api_key=body.api_key, ip_address=ip
+                db,
+                current_user.id,
+                base_url=effective_base_url,
+                api_key=effective_api_key,
+                ip_address=ip,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -88,10 +111,12 @@ async def connect_integration(
         )
 
     if body.provider == "notion":
-        settings = get_settings()
-        api_key = body.api_key or settings.notion_api_key
+        api_key = (body.api_key or "").strip()
         if not api_key:
-            raise HTTPException(status_code=400, detail="Notion API key not configured")
+            raise HTTPException(
+                status_code=400,
+                detail="api_key is required to connect Notion",
+            )
         try:
             connection = await connection_service.create_notion_connection(
                 db, current_user.id, api_key=api_key, ip_address=ip
@@ -332,3 +357,59 @@ async def get_connection_detail(
     if detail is None:
         raise HTTPException(status_code=404, detail="Connection not found")
     return IntegrationConnectionDetail(**detail)
+
+
+@router.post("/google-sheets/sync")
+async def sync_crm_to_sheets(
+    body: dict,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> dict:
+    """Append CRM rows to a connected Google Sheet.
+
+    Body: { "spreadsheet_id": "...", "entity": "lead|contact|deal|task|note|all", "record_id": "optional" }
+    """
+    from app.services.integrations.sheets_sync import (
+        sync_all_entity_to_sheet,
+        sync_entity_to_sheet,
+    )
+    from app.services import crm as crm_service
+
+    spreadsheet_id = str(body.get("spreadsheet_id", "")).strip()
+    entity = str(body.get("entity", "lead")).strip()
+    record_id = body.get("record_id")
+    if not spreadsheet_id:
+        raise HTTPException(status_code=400, detail="spreadsheet_id is required")
+
+    if entity == "all":
+        results = {}
+        for ent in ("lead", "contact", "deal", "task", "note"):
+            try:
+                results[ent] = await sync_all_entity_to_sheet(db, current_user.id, entity=ent, spreadsheet_id=spreadsheet_id)
+            except ValueError as exc:
+                results[ent] = {"success": False, "error": str(exc)}
+        return {"success": True, "results": results}
+
+    if record_id:
+        record = await _fetch_crm_record(db, current_user.id, entity=entity, record_id=uuid.UUID(str(record_id)))
+        if record is None:
+            raise HTTPException(status_code=404, detail="CRM record not found")
+        return await sync_entity_to_sheet(db, current_user.id, entity=entity, spreadsheet_id=spreadsheet_id, record=record)
+
+    return await sync_all_entity_to_sheet(db, current_user.id, entity=entity, spreadsheet_id=spreadsheet_id)
+
+
+async def _fetch_crm_record(db, user_id: uuid.UUID, *, entity: str, record_id: uuid.UUID):
+    from app.services import crm as crm_service
+
+    if entity == "lead":
+        return await crm_service.get_lead(db, record_id, user_id)
+    if entity == "contact":
+        return await crm_service.get_contact(db, record_id, user_id)
+    if entity == "deal":
+        return await crm_service.get_deal(db, record_id, user_id)
+    if entity == "task":
+        return await crm_service.get_task(db, record_id, user_id)
+    if entity == "note":
+        return await crm_service.get_note(db, record_id, user_id)
+    return None

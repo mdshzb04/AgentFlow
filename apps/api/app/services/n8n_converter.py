@@ -233,10 +233,17 @@ def import_n8n_workflow(n8n_data: dict[str, Any]) -> tuple[dict[str, Any], dict[
 def extract_webhook_url(n8n_data: dict[str, Any], base_url: str) -> str | None:
     base = base_url.rstrip("/")
     for node in n8n_data.get("nodes") or []:
-        if node.get("type") == "n8n-nodes-base.webhook":
-            path = (node.get("parameters") or {}).get("path", "")
-            if path:
-                return f"{base}/webhook/{path.lstrip('/')}"
+        if node.get("type") != "n8n-nodes-base.webhook":
+            continue
+        params = node.get("parameters") or {}
+        path = (params.get("path") or "").strip()
+        # Modern n8n assigns a webhookId (UUID) that becomes the production URL
+        # segment: {base}/webhook/{webhookId}. The path parameter is often empty.
+        webhook_id = (node.get("webhookId") or "").strip()
+        if path:
+            return f"{base}/webhook/{path.lstrip('/')}"
+        if webhook_id:
+            return f"{base}/webhook/{webhook_id}"
     return None
 
 

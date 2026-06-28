@@ -13,7 +13,6 @@ import { IntegrationFlowCanvas } from "@/components/marketing/integration-flow-c
 const INTEGRATIONS = [
   { id: "openai" as const, name: "OpenAI", particle: "#10b981" },
   { id: "gmail" as const, name: "Gmail", particle: "#ea4335" },
-  { id: "claude" as const, name: "Claude", particle: "#fb923c" },
   { id: "sheets" as const, name: "Sheets", particle: "#34a853" },
   { id: "github" as const, name: "GitHub", particle: "#e4e4e7" },
   { id: "n8n" as const, name: "n8n", particle: "#ea4b71" },

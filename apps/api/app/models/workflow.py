@@ -11,9 +11,9 @@ from app.core.database import Base
 
 
 class WorkflowStatus(str, enum.Enum):
-    DRAFT = "draft"
-    ACTIVE = "active"
-    ARCHIVED = "archived"
+    DRAFT = "DRAFT"
+    ACTIVE = "ACTIVE"
+    ARCHIVED = "ARCHIVED"
 
 
 class Workflow(Base):

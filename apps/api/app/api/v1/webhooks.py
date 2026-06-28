@@ -9,6 +9,7 @@ from app.models.integration_platform import WebhookDirection, WebhookLogStatus
 from app.schemas.integration_platform import (
     WebhookCreateRequest,
     WebhookCreateResponse,
+    WebhookDeliverRequest,
     WebhookEndpointRead,
     WebhookLogRead,
     WebhookRotateResponse,
@@ -131,6 +132,21 @@ async def retry_webhook_log(
         raise HTTPException(status_code=404, detail="Log not found")
     updated = await webhook_service.retry_log(db, log, current_user.id)
     return WebhookLogRead.model_validate(updated)
+
+
+@router.post("/deliver", response_model=WebhookLogRead)
+async def deliver_outgoing_webhook(
+    body: WebhookDeliverRequest,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> WebhookLogRead:
+    endpoint = await webhook_service.get_endpoint(db, body.endpoint_id, current_user.id)
+    if endpoint is None:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+    if endpoint.direction != WebhookDirection.OUTGOING:
+        raise HTTPException(status_code=400, detail="Only outgoing webhooks can be delivered")
+    log = await webhook_service.deliver_outgoing(db, endpoint, body.payload)
+    return WebhookLogRead.model_validate(log)
 
 
 @router.post("/inbound/{webhook_token}")

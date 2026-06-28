@@ -173,6 +173,77 @@ class NotionService:
         data = await self._request("POST", "/search", json=payload)
         return data.get("results", [])
 
+    async def search_databases(self, query: str = "", page_size: int = 10) -> list[dict[str, Any]]:
+        payload: dict[str, Any] = {
+            "page_size": page_size,
+            "filter": {"value": "database", "property": "object"},
+        }
+        if query:
+            payload["query"] = query
+        data = await self._request("POST", "/search", json=payload)
+        return data.get("results", [])
+
+    async def create_database(
+        self,
+        *,
+        parent_page_id: str,
+        title: str,
+        properties: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Create a database under a parent page. Default schema: Name (title)."""
+        props = properties or {
+            "Name": {"title": {}},
+        }
+        body = {
+            "parent": {"page_id": parent_page_id},
+            "title": [{"type": "text", "text": {"content": title[:2000]}}],
+            "properties": props,
+        }
+        return await self._request("POST", "/databases", json=body)
+
+    async def query_database(
+        self,
+        *,
+        database_id: str,
+        filter_: dict[str, Any] | None = None,
+        page_size: int = 20,
+    ) -> list[dict[str, Any]]:
+        body: dict[str, Any] = {"page_size": min(page_size, 100)}
+        if filter_:
+            body["filter"] = filter_
+        data = await self._request("POST", f"/databases/{database_id}/query", json=body)
+        return data.get("results", [])
+
+    async def create_database_item(
+        self,
+        *,
+        database_id: str,
+        properties: dict[str, Any],
+        content: str | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"parent": {"database_id": database_id}, "properties": properties}
+        if content:
+            body["children"] = [
+                {
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"type": "text", "text": {"content": content[:2000]}}],
+                    },
+                }
+            ]
+        return await self._request("POST", "/pages", json=body)
+
+    async def update_database_item(
+        self,
+        *,
+        page_id: str,
+        properties: dict[str, Any],
+    ) -> dict[str, Any]:
+        return await self._request(
+            "PATCH", f"/pages/{page_id}", json={"properties": properties}
+        )
+
 
 def get_notion_service(api_key: str) -> NotionService:
     return NotionService(api_key)

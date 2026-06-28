@@ -28,7 +28,7 @@ const features = [
     visualKey: "ai" as const,
     title: "AI-Native CRM",
     description:
-      "Qualify leads, draft emails, and summarize meetings with built-in OpenAI and Claude agents.",
+      "Qualify leads, draft emails, and summarize meetings with built-in OpenAI agents.",
     border: "from-violet-400 via-purple-500 to-fuchsia-500",
     bg: "from-violet-500/8 via-purple-500/5 to-fuchsia-500/8",
     iconAccent: "border-violet-500/40 bg-violet-500/15 text-violet-400",

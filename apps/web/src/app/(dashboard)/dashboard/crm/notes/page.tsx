@@ -83,6 +83,10 @@ export default function NotesPage() {
         },
       );
     },
+    refetchQueries: [
+      { query: ListNotesDocument, variables: { pagination: LIST_PAGINATION } },
+      { query: CrmRecordLabelsDocument },
+    ],
   });
 
   const [deleteNote] = useDeleteNoteMutation({
@@ -108,6 +112,9 @@ export default function NotesPage() {
       cache.evict({ id: cache.identify({ __typename: "Note", id }) });
       cache.gc();
     },
+    refetchQueries: [
+      { query: ListNotesDocument, variables: { pagination: LIST_PAGINATION } },
+    ],
   });
 
   const notes = useMemo<Note[]>(
