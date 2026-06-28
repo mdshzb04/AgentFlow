@@ -1,0 +1,372 @@
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+"""AgentFlow CRM GraphQL API — runs alongside REST at /graphql."""
+scalar Date
+scalar DateTime
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+enum LeadStatus {
+  new
+  contacted
+  qualified
+  converted
+  lost
+}
+
+enum DealStage {
+  prospecting
+  qualification
+  proposal
+  negotiation
+  closed_won
+  closed_lost
+}
+
+enum TaskStatus {
+  pending
+  in_progress
+  completed
+  cancelled
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+}
+
+"""Offset-based pagination."""
+input PaginationInput {
+  limit: Int = 50
+  offset: Int = 0
+}
+
+"""Shared list filters for CRM entities."""
+input CrmListFilter {
+  search: String
+  status: String
+  sortBy: String = "updated_at"
+  sortDirection: SortDirection = DESC
+  createdAfter: DateTime
+  createdBefore: DateTime
+}
+
+"""Page metadata for paginated lists."""
+type PageInfo {
+  totalCount: Int!
+  limit: Int!
+  offset: Int!
+  hasNextPage: Boolean!
+}
+
+type CompanyConnection {
+  nodes: [Company!]!
+  pageInfo: PageInfo!
+}
+
+type ContactConnection {
+  nodes: [Contact!]!
+  pageInfo: PageInfo!
+}
+
+type LeadConnection {
+  nodes: [Lead!]!
+  pageInfo: PageInfo!
+}
+
+type DealConnection {
+  nodes: [Deal!]!
+  pageInfo: PageInfo!
+}
+
+type TaskConnection {
+  nodes: [Task!]!
+  pageInfo: PageInfo!
+}
+
+type NoteConnection {
+  nodes: [Note!]!
+  pageInfo: PageInfo!
+}
+
+"""Organization or account."""
+type Company {
+  id: ID!
+  name: String!
+  domain: String
+  industry: String
+  size: String
+  website: String
+  phone: String
+  address: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  contacts: [Contact!]!
+  deals: [Deal!]!
+  leads: [Lead!]!
+}
+
+"""Person associated with a company."""
+type Contact {
+  id: ID!
+  companyId: ID
+  firstName: String!
+  lastName: String!
+  email: String
+  phone: String
+  title: String
+  status: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  company: Company
+}
+
+"""Sales lead."""
+type Lead {
+  id: ID!
+  companyId: ID
+  contactId: ID
+  title: String!
+  source: String
+  status: LeadStatus!
+  score: Int
+  value: Float
+  email: String
+  phone: String
+  notesSummary: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  company: Company
+  contact: Contact
+}
+
+"""Sales opportunity."""
+type Deal {
+  id: ID!
+  companyId: ID
+  contactId: ID
+  name: String!
+  stage: DealStage!
+  amount: Float
+  currency: String!
+  probability: Int
+  closeDate: Date
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  company: Company
+  tasks: [Task!]!
+}
+
+"""CRM task."""
+type Task {
+  id: ID!
+  title: String!
+  description: String
+  status: TaskStatus!
+  priority: TaskPriority!
+  dueDate: Date
+  relatedType: String
+  relatedId: ID
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+"""Note attached to a CRM record."""
+type Note {
+  id: ID!
+  body: String!
+  relatedType: String!
+  relatedId: ID!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+"""Label for a CRM record used in pickers."""
+type RecordLabel {
+  id: ID!
+  label: String!
+  subtitle: String
+  relatedType: String
+}
+
+"""Nested CRM record labels in a single query."""
+type CrmRecordLabels {
+  companies: [RecordLabel!]!
+  contacts: [RecordLabel!]!
+  leads: [RecordLabel!]!
+  deals: [RecordLabel!]!
+  tasks: [RecordLabel!]!
+}
+
+"""Cross-entity CRM search results."""
+type CrmSearchResult {
+  companies: [Company!]!
+  contacts: [Contact!]!
+  leads: [Lead!]!
+  deals: [Deal!]!
+  tasks: [Task!]!
+  notes: [Note!]!
+}
+
+input CompanyCreateInput {
+  name: String!
+  domain: String
+  industry: String
+  size: String
+  website: String
+  phone: String
+  address: String
+}
+
+input CompanyUpdateInput {
+  name: String
+  domain: String
+  industry: String
+  size: String
+  website: String
+  phone: String
+  address: String
+}
+
+input ContactCreateInput {
+  firstName: String!
+  lastName: String!
+  email: String
+  phone: String
+  title: String
+  status: String = "active"
+  companyId: ID
+}
+
+input ContactUpdateInput {
+  firstName: String
+  lastName: String
+  email: String
+  phone: String
+  title: String
+  status: String
+  companyId: ID
+}
+
+input LeadCreateInput {
+  title: String!
+  source: String
+  status: LeadStatus = new
+  score: Int
+  value: Float
+  email: String
+  phone: String
+  notesSummary: String
+  companyId: ID
+  contactId: ID
+}
+
+input LeadUpdateInput {
+  title: String
+  source: String
+  status: LeadStatus
+  score: Int
+  value: Float
+  email: String
+  phone: String
+  notesSummary: String
+  companyId: ID
+  contactId: ID
+}
+
+input DealCreateInput {
+  name: String!
+  stage: DealStage = prospecting
+  amount: Float
+  currency: String = "USD"
+  probability: Int
+  closeDate: Date
+  companyId: ID
+  contactId: ID
+}
+
+input DealUpdateInput {
+  name: String
+  stage: DealStage
+  amount: Float
+  currency: String
+  probability: Int
+  closeDate: Date
+  companyId: ID
+  contactId: ID
+}
+
+input TaskCreateInput {
+  title: String!
+  description: String
+  status: TaskStatus = pending
+  priority: TaskPriority = medium
+  dueDate: Date
+  relatedType: String
+  relatedId: ID
+}
+
+input TaskUpdateInput {
+  title: String
+  description: String
+  status: TaskStatus
+  priority: TaskPriority
+  dueDate: Date
+  relatedType: String
+  relatedId: ID
+}
+
+input NoteCreateInput {
+  body: String!
+  relatedType: String!
+  relatedId: ID!
+}
+
+input NoteUpdateInput {
+  body: String
+}
+
+type Query {
+  companies(filters: CrmListFilter, pagination: PaginationInput): CompanyConnection!
+  company(id: ID!): Company!
+  contacts(filters: CrmListFilter, pagination: PaginationInput): ContactConnection!
+  contact(id: ID!): Contact!
+  leads(filters: CrmListFilter, pagination: PaginationInput): LeadConnection!
+  lead(id: ID!): Lead!
+  deals(filters: CrmListFilter, pagination: PaginationInput): DealConnection!
+  deal(id: ID!): Deal!
+  tasks(filters: CrmListFilter, pagination: PaginationInput): TaskConnection!
+  task(id: ID!): Task!
+  notes(relatedType: String, relatedId: ID, filters: CrmListFilter, pagination: PaginationInput): NoteConnection!
+  note(id: ID!): Note!
+  crmRecordLabels: CrmRecordLabels!
+  searchCrm(query: String!, limit: Int = 10): CrmSearchResult!
+}
+
+type Mutation {
+  createCompany(input: CompanyCreateInput!): Company!
+  updateCompany(id: ID!, input: CompanyUpdateInput!): Company!
+  deleteCompany(id: ID!): Boolean!
+  createContact(input: ContactCreateInput!): Contact!
+  updateContact(id: ID!, input: ContactUpdateInput!): Contact!
+  deleteContact(id: ID!): Boolean!
+  createLead(input: LeadCreateInput!): Lead!
+  updateLead(id: ID!, input: LeadUpdateInput!): Lead!
+  deleteLead(id: ID!): Boolean!
+  createDeal(input: DealCreateInput!): Deal!
+  updateDeal(id: ID!, input: DealUpdateInput!): Deal!
+  deleteDeal(id: ID!): Boolean!
+  createTask(input: TaskCreateInput!): Task!
+  updateTask(id: ID!, input: TaskUpdateInput!): Task!
+  deleteTask(id: ID!): Boolean!
+  createNote(input: NoteCreateInput!): Note!
+  updateNote(id: ID!, input: NoteUpdateInput!): Note!
+  deleteNote(id: ID!): Boolean!
+}

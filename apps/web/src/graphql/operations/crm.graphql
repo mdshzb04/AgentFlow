@@ -1,0 +1,254 @@
+fragment CompanyFields on Company {
+  id
+  name
+  domain
+  industry
+  size
+  website
+  phone
+  address
+  createdAt
+  updatedAt
+}
+
+fragment ContactFields on Contact {
+  id
+  companyId
+  firstName
+  lastName
+  email
+  phone
+  title
+  status
+  createdAt
+  updatedAt
+}
+
+fragment LeadFields on Lead {
+  id
+  companyId
+  contactId
+  title
+  source
+  status
+  score
+  value
+  email
+  phone
+  notesSummary
+  createdAt
+  updatedAt
+}
+
+fragment DealFields on Deal {
+  id
+  companyId
+  contactId
+  name
+  stage
+  amount
+  currency
+  probability
+  closeDate
+  createdAt
+  updatedAt
+}
+
+fragment TaskFields on Task {
+  id
+  title
+  description
+  status
+  priority
+  dueDate
+  relatedType
+  relatedId
+  createdAt
+  updatedAt
+}
+
+fragment NoteFields on Note {
+  id
+  body
+  relatedType
+  relatedId
+  createdAt
+  updatedAt
+}
+
+query ListCompanies($filters: CrmListFilter, $pagination: PaginationInput) {
+  companies(filters: $filters, pagination: $pagination) {
+    nodes {
+      ...CompanyFields
+    }
+    pageInfo {
+      totalCount
+      hasNextPage
+    }
+  }
+}
+
+query ListContacts($filters: CrmListFilter, $pagination: PaginationInput) {
+  contacts(filters: $filters, pagination: $pagination) {
+    nodes {
+      ...ContactFields
+    }
+    pageInfo {
+      totalCount
+      hasNextPage
+    }
+  }
+}
+
+query ListLeads($filters: CrmListFilter, $pagination: PaginationInput) {
+  leads(filters: $filters, pagination: $pagination) {
+    nodes {
+      ...LeadFields
+    }
+    pageInfo {
+      totalCount
+      hasNextPage
+    }
+  }
+}
+
+query ListDeals($filters: CrmListFilter, $pagination: PaginationInput) {
+  deals(filters: $filters, pagination: $pagination) {
+    nodes {
+      ...DealFields
+    }
+    pageInfo {
+      totalCount
+      hasNextPage
+    }
+  }
+}
+
+query ListTasks($filters: CrmListFilter, $pagination: PaginationInput) {
+  tasks(filters: $filters, pagination: $pagination) {
+    nodes {
+      ...TaskFields
+    }
+    pageInfo {
+      totalCount
+      hasNextPage
+    }
+  }
+}
+
+query ListNotes(
+  $relatedType: String
+  $relatedId: ID
+  $filters: CrmListFilter
+  $pagination: PaginationInput
+) {
+  notes(
+    relatedType: $relatedType
+    relatedId: $relatedId
+    filters: $filters
+    pagination: $pagination
+  ) {
+    nodes {
+      ...NoteFields
+    }
+    pageInfo {
+      totalCount
+      hasNextPage
+    }
+  }
+}
+
+query CrmRecordLabels {
+  crmRecordLabels {
+    companies {
+      id
+      label
+      subtitle
+      relatedType
+    }
+    contacts {
+      id
+      label
+      subtitle
+      relatedType
+    }
+    leads {
+      id
+      label
+      subtitle
+      relatedType
+    }
+    deals {
+      id
+      label
+      subtitle
+      relatedType
+    }
+    tasks {
+      id
+      label
+      subtitle
+      relatedType
+    }
+  }
+}
+
+mutation CreateCompany($input: CompanyCreateInput!) {
+  createCompany(input: $input) {
+    ...CompanyFields
+  }
+}
+
+mutation DeleteCompany($id: ID!) {
+  deleteCompany(id: $id)
+}
+
+mutation CreateContact($input: ContactCreateInput!) {
+  createContact(input: $input) {
+    ...ContactFields
+  }
+}
+
+mutation DeleteContact($id: ID!) {
+  deleteContact(id: $id)
+}
+
+mutation CreateLead($input: LeadCreateInput!) {
+  createLead(input: $input) {
+    ...LeadFields
+  }
+}
+
+mutation DeleteLead($id: ID!) {
+  deleteLead(id: $id)
+}
+
+mutation CreateDeal($input: DealCreateInput!) {
+  createDeal(input: $input) {
+    ...DealFields
+  }
+}
+
+mutation DeleteDeal($id: ID!) {
+  deleteDeal(id: $id)
+}
+
+mutation CreateTask($input: TaskCreateInput!) {
+  createTask(input: $input) {
+    ...TaskFields
+  }
+}
+
+mutation DeleteTask($id: ID!) {
+  deleteTask(id: $id)
+}
+
+mutation CreateNote($input: NoteCreateInput!) {
+  createNote(input: $input) {
+    ...NoteFields
+  }
+}
+
+mutation DeleteNote($id: ID!) {
+  deleteNote(id: $id)
+}
